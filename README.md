@@ -22,18 +22,39 @@ kullanır. Frontend, REST API ile bağımsız olarak haberleşir.
 
 - .NET SDK 10.0.400
 - Node.js 20.19 veya üzeri
-- PostgreSQL
+- Docker Desktop
 
-## Backend
+## PostgreSQL
 
-Varsayılan geliştirme bağlantısı:
+PostgreSQL geliştirme veritabanı Docker Compose ile çalışır:
 
-```text
-Host=localhost;Port=5432;Database=inventory_system;Username=postgres;Password=postgres
+```powershell
+docker compose up -d postgres
+docker compose ps
 ```
 
-Gerçek ortam değerini `ConnectionStrings__DefaultConnection` environment
-değişkeniyle geçebilirsiniz.
+Container içindeki `5432` portu, bilgisayarda `5433` portuna açılır. Varsayılan
+development bağlantısı:
+
+```text
+Host=localhost;Port=5433;Database=inventory_system;Username=inventory_app;Password=inventory_dev_password
+```
+
+Development değerlerini değiştirmek için `.env.example` dosyasını `.env`
+olarak kopyalayın. `.env` Git tarafından izlenmez. Production bağlantısı
+`ConnectionStrings__DefaultConnection` environment değişkeni veya secret
+provider ile verilmelidir. Docker kullanıcı bilgileri değiştirilirse backend
+connection string'i de aynı bilgilerle environment üzerinden verilmelidir.
+
+Veritabanını durdurmak için:
+
+```powershell
+docker compose down
+```
+
+Named volume kullanıldığı için `docker compose down` sonrasında veriler korunur.
+
+## Backend
 
 ```powershell
 dotnet tool restore
