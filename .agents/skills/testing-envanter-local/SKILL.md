@@ -1,0 +1,1 @@
+file://C:/Users/Administrator/repos/Envanter-Uygulamam/.agents/skills/testing-envanter-local/SKILL.md
