@@ -1,4 +1,5 @@
 using FluentValidation;
+using InventorySystem.Application.Common.Exceptions;
 using Microsoft.AspNetCore.Mvc;
 
 namespace InventorySystem.API.Middleware;
@@ -17,10 +18,29 @@ public sealed class ExceptionHandlingMiddleware(
         {
             await WriteValidationProblemAsync(context, exception);
         }
+        catch (NotFoundException exception)
+        {
+            await WriteProblemAsync(
+                context,
+                StatusCodes.Status404NotFound,
+                "Kayıt bulunamadı.",
+                exception.Message);
+        }
+        catch (ConflictException exception)
+        {
+            await WriteProblemAsync(
+                context,
+                StatusCodes.Status409Conflict,
+                "İşlem tamamlanamadı.",
+                exception.Message);
+        }
         catch (Exception exception)
         {
             logger.LogError(exception, "An unhandled exception occurred.");
-            await WriteProblemAsync(context);
+            await WriteProblemAsync(
+                context,
+                StatusCodes.Status500InternalServerError,
+                "Beklenmeyen bir hata oluştu.");
         }
     }
 
@@ -44,15 +64,20 @@ public sealed class ExceptionHandlingMiddleware(
             });
     }
 
-    private static Task WriteProblemAsync(HttpContext context)
+    private static Task WriteProblemAsync(
+        HttpContext context,
+        int statusCode,
+        string title,
+        string? detail = null)
     {
-        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.StatusCode = statusCode;
 
         return context.Response.WriteAsJsonAsync(
             new ProblemDetails
             {
-                Status = StatusCodes.Status500InternalServerError,
-                Title = "An unexpected error occurred."
+                Status = statusCode,
+                Title = title,
+                Detail = detail
             });
     }
 }

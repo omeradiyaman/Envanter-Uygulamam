@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '../layouts/AppLayout.vue'
 import DashboardView from '../views/DashboardView.vue'
+import PersonnelView from '../views/PersonnelView.vue'
 import PlaceholderView from '../views/PlaceholderView.vue'
 
 const router = createRouter({
@@ -25,7 +26,7 @@ const router = createRouter({
         {
           path: 'personeller',
           name: 'personnel',
-          component: PlaceholderView,
+          component: PersonnelView,
           meta: { title: 'Personeller' },
         },
         {
