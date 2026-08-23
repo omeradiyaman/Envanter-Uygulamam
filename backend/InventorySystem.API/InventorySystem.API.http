@@ -1,0 +1,6 @@
+@InventorySystem.API_HostAddress = https://localhost:7001
+
+GET {{InventorySystem.API_HostAddress}}/api/system/status?client=http-file
+Accept: application/json
+
+###
