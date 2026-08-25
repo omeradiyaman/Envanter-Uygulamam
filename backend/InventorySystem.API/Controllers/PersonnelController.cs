@@ -3,94 +3,19 @@ using InventorySystem.Application.DTOs;
 using InventorySystem.Application.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-
 namespace InventorySystem.API.Controllers;
-
 [ApiController]
 [Route("api/personnel")]
 public sealed class PersonnelController(ISender sender) : ControllerBase
 {
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<PersonnelListItemDto>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<PersonnelListItemDto>>> GetList(
-        CancellationToken cancellationToken)
-    {
-        var personnel = await sender.Send(
-            new GetPersonnelListQuery(),
-            cancellationToken);
-
-        return Ok(personnel);
-    }
-
+    public async Task<ActionResult<PersonnelListResponse>> GetList([FromQuery] string? search, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default) => Ok(await sender.Send(new GetPersonnelListQuery(search, page, pageSize), cancellationToken));
     [HttpGet("{id:guid}")]
-    [ProducesResponseType<PersonnelDetailDto>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PersonnelDetailDto>> GetById(
-        Guid id,
-        CancellationToken cancellationToken)
-    {
-        var personnel = await sender.Send(
-            new GetPersonnelByIdQuery(id),
-            cancellationToken);
-
-        return Ok(personnel);
-    }
-
+    public async Task<ActionResult<PersonnelDetailDto>> GetById(Guid id, CancellationToken cancellationToken) => Ok(await sender.Send(new GetPersonnelByIdQuery(id), cancellationToken));
     [HttpPost]
-    [ProducesResponseType<PersonnelDetailDto>(StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<PersonnelDetailDto>> Create(
-        CreatePersonnelRequest request,
-        CancellationToken cancellationToken)
-    {
-        var personnel = await sender.Send(
-            new CreatePersonnelCommand(
-                request.SicilNo,
-                request.Ad,
-                request.Soyad,
-                request.Departman,
-                request.Pozisyon,
-                request.ZimmetNo,
-                request.AktifMi),
-            cancellationToken);
-
-        return CreatedAtAction(nameof(GetById), new { id = personnel.Id }, personnel);
-    }
-
+    public async Task<ActionResult<PersonnelDetailDto>> Create(CreatePersonnelRequest request, CancellationToken cancellationToken) => CreatedAtAction(nameof(GetById), new { id = (await sender.Send(new CreatePersonnelCommand(request.SicilNo, request.Ad, request.Soyad, request.Departman, request.Pozisyon, request.Eposta, request.ZimmetNo, request.AktifMi), cancellationToken)).Id }, request);
     [HttpPut("{id:guid}")]
-    [ProducesResponseType<PersonnelDetailDto>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<PersonnelDetailDto>> Update(
-        Guid id,
-        UpdatePersonnelRequest request,
-        CancellationToken cancellationToken)
-    {
-        var personnel = await sender.Send(
-            new UpdatePersonnelCommand(
-                id,
-                request.SicilNo,
-                request.Ad,
-                request.Soyad,
-                request.Departman,
-                request.Pozisyon,
-                request.ZimmetNo,
-                request.AktifMi),
-            cancellationToken);
-
-        return Ok(personnel);
-    }
-
+    public async Task<ActionResult<PersonnelDetailDto>> Update(Guid id, UpdatePersonnelRequest request, CancellationToken cancellationToken) => Ok(await sender.Send(new UpdatePersonnelCommand(id, request.SicilNo, request.Ad, request.Soyad, request.Departman, request.Pozisyon, request.Eposta, request.ZimmetNo, request.AktifMi), cancellationToken));
     [HttpDelete("{id:guid}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Delete(
-        Guid id,
-        CancellationToken cancellationToken)
-    {
-        await sender.Send(new DeletePersonnelCommand(id), cancellationToken);
-        return NoContent();
-    }
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken) { await sender.Send(new DeletePersonnelCommand(id), cancellationToken); return NoContent(); }
 }
