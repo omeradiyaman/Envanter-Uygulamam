@@ -6,6 +6,13 @@ public interface IPersonnelRepository
 {
     Task<IReadOnlyList<Personnel>> ListAsync(CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<Personnel>> ListFilteredAsync(
+        string? searchTerm,
+        bool? aktifMi,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<Personnel>> ListForImportAsync(CancellationToken cancellationToken);
+
     Task<Personnel?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
     Task<bool> SicilNoExistsAsync(

@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import ConfirmationModal from '../components/ConfirmationModal.vue'
+import AppAlert from '../components/AppAlert.vue'
+import DataState from '../components/DataState.vue'
 import PersonnelDetailModal from '../components/PersonnelDetailModal.vue'
 import PersonnelFormModal from '../components/PersonnelFormModal.vue'
+import { authStore } from '../stores/authStore'
+import { exportPersonnelExcel } from '../services/excelService'
 import {
   createPersonnel,
   deletePersonnel,
-  getPersonnelById,
   getPersonnelList,
   updatePersonnel,
   type PersonnelDetail,
@@ -15,10 +19,15 @@ import {
 } from '../services/personnelService'
 
 const personnel = ref<PersonnelListItem[]>([])
+const router = useRouter()
 const loading = ref(true)
 const loadError = ref('')
 const searchTerm = ref('')
+const departmentFilter = ref('')
+const statusFilter = ref('all')
 const successMessage = ref('')
+const selectedPersonnelIds = ref<string[]>([])
+const exporting = ref(false)
 
 const showFormModal = ref(false)
 const editingPersonnel = ref<PersonnelListItem | null>(null)
@@ -36,17 +45,12 @@ const deleting = ref(false)
 const deleteError = ref('')
 
 const listAbortController = new AbortController()
-let detailAbortController: AbortController | null = null
 
 const filteredPersonnel = computed(() => {
   const query = searchTerm.value.toLocaleLowerCase('tr-TR').trim()
 
-  if (!query) {
-    return personnel.value
-  }
-
-  return personnel.value.filter((item) =>
-    [
+  return personnel.value.filter((item) => {
+    const matchesQuery = !query || [
       item.sicilNo,
       item.ad,
       item.soyad,
@@ -57,13 +61,43 @@ const filteredPersonnel = computed(() => {
     ]
       .join(' ')
       .toLocaleLowerCase('tr-TR')
-      .includes(query),
-  )
+      .includes(query)
+    const matchesDepartment = !departmentFilter.value || item.departman === departmentFilter.value
+    const matchesStatus = statusFilter.value === 'all' || (statusFilter.value === 'active' ? item.aktifMi : !item.aktifMi)
+    return matchesQuery && matchesDepartment && matchesStatus
+  })
 })
 
 const activePersonnelCount = computed(
   () => personnel.value.filter((item) => item.aktifMi).length,
 )
+const departments = computed(() => [...new Set(personnel.value.map((item) => item.departman))].sort((a, b) => a.localeCompare(b, 'tr-TR')))
+const departmentCount = computed(() => departments.value.length)
+const passivePersonnelCount = computed(() => personnel.value.length - activePersonnelCount.value)
+const selectedPersonnel = computed(() => personnel.value.filter(item => selectedPersonnelIds.value.includes(item.id)))
+const allFilteredSelected = computed(() => filteredPersonnel.value.length > 0 && filteredPersonnel.value.every(item => selectedPersonnelIds.value.includes(item.id)))
+
+function clearFilters() {
+  searchTerm.value = ''
+  departmentFilter.value = ''
+  statusFilter.value = 'all'
+}
+
+function toggleAllFiltered() {
+  const ids = filteredPersonnel.value.map(item => item.id)
+  selectedPersonnelIds.value = allFilteredSelected.value
+    ? selectedPersonnelIds.value.filter(id => !ids.includes(id))
+    : [...new Set([...selectedPersonnelIds.value, ...ids])]
+}
+
+async function exportSelectedPersonnel() {
+  if (!selectedPersonnelIds.value.length) return
+  exporting.value = true
+  loadError.value = ''
+  try { await exportPersonnelExcel(selectedPersonnelIds.value) }
+  catch (error: unknown) { loadError.value = getErrorMessage(error, 'Seçili personeller dışa aktarılamadı.') }
+  finally { exporting.value = false }
+}
 
 async function loadPersonnel(signal?: AbortSignal) {
   loading.value = true
@@ -83,15 +117,11 @@ async function loadPersonnel(signal?: AbortSignal) {
 }
 
 function openCreateModal() {
-  editingPersonnel.value = null
-  formError.value = ''
-  showFormModal.value = true
+  void router.push({ name: 'personnel-create' })
 }
 
 function openEditModal(item: PersonnelListItem) {
-  editingPersonnel.value = item
-  formError.value = ''
-  showFormModal.value = true
+  void router.push({ name: 'personnel-edit', params: { id: item.id } })
 }
 
 function closeFormModal() {
@@ -123,32 +153,10 @@ async function savePersonnel(payload: PersonnelPayload) {
 }
 
 async function openDetailModal(id: string) {
-  detailAbortController?.abort()
-  const controller = new AbortController()
-  detailAbortController = controller
-  detailPersonnel.value = null
-  detailError.value = ''
-  detailLoading.value = true
-  showDetailModal.value = true
-
-  try {
-    detailPersonnel.value = await getPersonnelById(
-      id,
-      controller.signal,
-    )
-  } catch (error: unknown) {
-    if (!controller.signal.aborted) {
-      detailError.value = getErrorMessage(error, 'Personel detayı yüklenemedi.')
-    }
-  } finally {
-    if (!controller.signal.aborted) {
-      detailLoading.value = false
-    }
-  }
+  await router.push({ name: 'personnel-detail', params: { id } })
 }
 
 function closeDetailModal() {
-  detailAbortController?.abort()
   showDetailModal.value = false
 }
 
@@ -196,151 +204,124 @@ onMounted(() => loadPersonnel(listAbortController.signal))
 
 onBeforeUnmount(() => {
   listAbortController.abort()
-  detailAbortController?.abort()
 })
 </script>
 
 <template>
   <section>
-    <div
-      class="page-heading d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4"
-    >
-      <div>
-        <h2 class="h4 fw-semibold mb-1">Personel Yönetimi</h2>
-        <p class="text-secondary mb-0">
-          Personel kayıtlarını, görev bilgilerini ve zimmet numaralarını yönetin.
-        </p>
+    <header class="people-hero">
+      <div class="people-hero__icon"><i class="bi bi-people"></i></div>
+      <div class="people-hero__content">
+        <span class="people-hero__eyebrow">ORGANİZASYON YÖNETİMİ</span>
+        <h1>Personeller</h1>
+        <p>Çalışan kayıtlarını, departmanları ve zimmet durumlarını merkezi olarak yönetin.</p>
       </div>
-      <button type="button" class="btn btn-primary add-button" @click="openCreateModal">
-        <i class="bi bi-person-plus me-2" aria-hidden="true"></i>
-        Yeni Personel
-      </button>
-    </div>
+      <div class="people-hero__actions">
+        <div class="people-hero__count"><strong>{{ personnel.length }}</strong><span>Toplam kayıt</span></div>
+        <button v-if="authStore.canEdit.value" type="button" class="btn btn-primary add-button" @click="openCreateModal">
+          <i class="bi bi-person-plus me-2" aria-hidden="true"></i>
+          Yeni Personel
+        </button>
+      </div>
+    </header>
 
-    <div
+    <AppAlert
       v-if="successMessage"
-      class="alert alert-success alert-dismissible fade show"
-      role="status"
+      variant="success"
+      dismissible
+      @dismiss="successMessage = ''"
     >
       {{ successMessage }}
-      <button
-        type="button"
-        class="btn-close"
-        aria-label="Kapat"
-        @click="successMessage = ''"
-      ></button>
+    </AppAlert>
+
+    <div class="people-kpi-grid">
+      <div class="people-kpi"><span><i class="bi bi-people"></i></span><div><strong>{{ personnel.length }}</strong><small>Toplam Personel</small></div></div>
+      <div class="people-kpi is-success"><span><i class="bi bi-person-check"></i></span><div><strong>{{ activePersonnelCount }}</strong><small>Aktif Personel</small></div></div>
+      <div class="people-kpi is-violet"><span><i class="bi bi-diagram-3"></i></span><div><strong>{{ departmentCount }}</strong><small>Departman</small></div></div>
+      <div class="people-kpi is-muted"><span><i class="bi bi-person-dash"></i></span><div><strong>{{ passivePersonnelCount }}</strong><small>Pasif Personel</small></div></div>
     </div>
 
-    <div class="row g-3 mb-4">
-      <div class="col-12 col-md-6">
-        <div class="summary-card d-flex align-items-center gap-3">
-          <span class="summary-icon d-inline-flex align-items-center justify-content-center">
-            <i class="bi bi-people" aria-hidden="true"></i>
-          </span>
-          <div>
-            <div class="summary-label">Toplam Personel</div>
-            <div class="summary-value">{{ personnel.length }}</div>
-          </div>
-        </div>
-      </div>
-      <div class="col-12 col-md-6">
-        <div class="summary-card d-flex align-items-center gap-3">
-          <span
-            class="summary-icon active d-inline-flex align-items-center justify-content-center"
-          >
-            <i class="bi bi-person-check" aria-hidden="true"></i>
-          </span>
-          <div>
-            <div class="summary-label">Aktif Personel</div>
-            <div class="summary-value">{{ activePersonnelCount }}</div>
-          </div>
-        </div>
-      </div>
+    <div v-if="selectedPersonnel.length" class="inventory-selection-bar">
+      <i class="bi bi-check2-square"></i><span><strong>{{ selectedPersonnel.length }}</strong> personel seçildi</span>
+      <button type="button" class="btn btn-sm btn-light" :disabled="exporting" @click="exportSelectedPersonnel"><i class="bi bi-file-earmark-excel me-1"></i>Seçilenleri Excel’e Aktar</button>
+      <button type="button" class="inventory-selection-bar__clear" @click="selectedPersonnelIds = []">Seçimi Temizle</button>
     </div>
 
-    <div class="card content-card personnel-card">
-      <div
-        class="card-header table-toolbar d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3"
-      >
+    <div class="card content-card list-card">
+      <div class="table-card-header">
         <div>
-          <h3 class="h6 fw-semibold mb-1">Personel Listesi</h3>
-          <p class="small text-secondary mb-0">
-            {{ filteredPersonnel.length }} kayıt gösteriliyor
-          </p>
+          <h3 class="table-card-header__title">Personel Listesi</h3>
+          <p class="table-card-header__meta mb-0">{{ filteredPersonnel.length }} kayıt gösteriliyor</p>
         </div>
-        <label class="search-box">
-          <i class="bi bi-search" aria-hidden="true"></i>
-          <span class="visually-hidden">Personel ara</span>
-          <input
-            v-model="searchTerm"
-            type="search"
-            class="form-control"
-            placeholder="Sicil, ad, departman veya pozisyon ara..."
-            autocomplete="off"
-          />
-        </label>
+        <span class="people-list-count"><i class="bi bi-funnel"></i> {{ filteredPersonnel.length }} sonuç</span>
       </div>
 
-      <div v-if="loading" class="state-panel">
-        <div class="spinner-border text-primary mb-3" role="status">
-          <span class="visually-hidden">Yükleniyor</span>
-        </div>
-        <strong>Personeller yükleniyor</strong>
-        <span>API bağlantısı kontrol ediliyor...</span>
+      <div class="people-filter-bar">
+        <label class="search-box people-filter-bar__search"><i class="bi bi-search" aria-hidden="true"></i><span class="visually-hidden">Personel ara</span><input v-model="searchTerm" type="search" class="form-control" placeholder="Sicil, ad, departman veya pozisyon ara..." autocomplete="off" /></label>
+        <label><span class="visually-hidden">Departman</span><select v-model="departmentFilter" class="form-select"><option value="">Tüm departmanlar</option><option v-for="department in departments" :key="department" :value="department">{{ department }}</option></select></label>
+        <label><span class="visually-hidden">Durum</span><select v-model="statusFilter" class="form-select"><option value="all">Tüm durumlar</option><option value="active">Aktif</option><option value="passive">Pasif</option></select></label>
+        <button v-if="searchTerm || departmentFilter || statusFilter !== 'all'" type="button" class="btn btn-light border" @click="clearFilters"><i class="bi bi-x-lg me-1"></i>Temizle</button>
       </div>
 
-      <div v-else-if="loadError" class="state-panel">
-        <span class="state-icon error">
-          <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
-        </span>
-        <strong>Personel listesi alınamadı</strong>
-        <span>{{ loadError }}</span>
-        <button type="button" class="btn btn-outline-primary mt-2" @click="loadPersonnel()">
-          Yeniden Dene
-        </button>
-      </div>
+      <DataState v-if="loading" type="loading" title="Personeller yükleniyor" message="API bağlantısı kontrol ediliyor..." />
 
-      <div v-else-if="personnel.length === 0" class="state-panel">
-        <span class="state-icon">
-          <i class="bi bi-person-plus" aria-hidden="true"></i>
-        </span>
-        <strong>Henüz personel kaydı yok</strong>
-        <span>İlk personel kaydını ekleyerek başlayın.</span>
-        <button type="button" class="btn btn-primary mt-2" @click="openCreateModal">
-          Yeni Personel Ekle
-        </button>
-      </div>
+      <DataState
+        v-else-if="loadError"
+        type="error"
+        title="Personel listesi alınamadı"
+        :message="loadError"
+      >
+        <template #actions>
+          <button type="button" class="btn btn-outline-primary" @click="loadPersonnel()">
+            Yeniden Dene
+          </button>
+        </template>
+      </DataState>
 
-      <div v-else-if="filteredPersonnel.length === 0" class="state-panel">
-        <span class="state-icon">
-          <i class="bi bi-search" aria-hidden="true"></i>
-        </span>
-        <strong>Eşleşen personel bulunamadı</strong>
-        <span>Arama ifadenizi değiştirip yeniden deneyin.</span>
-        <button
-          type="button"
-          class="btn btn-light border mt-2"
-          @click="searchTerm = ''"
-        >
-          Aramayı Temizle
-        </button>
-      </div>
+      <DataState
+        v-else-if="personnel.length === 0"
+        type="empty"
+        title="Henüz personel kaydı yok"
+        message="İlk personel kaydını ekleyerek başlayın."
+        icon="bi-person-plus"
+      >
+        <template #actions>
+          <button v-if="authStore.canEdit.value" type="button" class="btn btn-primary" @click="openCreateModal">
+            Yeni Personel Ekle
+          </button>
+        </template>
+      </DataState>
 
-      <div v-else class="table-responsive">
-        <table class="table personnel-table align-middle mb-0">
+      <DataState
+        v-else-if="filteredPersonnel.length === 0"
+        type="no-results"
+        title="Eşleşen personel bulunamadı"
+        message="Arama ifadenizi değiştirip yeniden deneyin."
+      >
+        <template #actions>
+          <button type="button" class="btn btn-light border" @click="clearFilters">
+            Aramayı Temizle
+          </button>
+        </template>
+      </DataState>
+
+      <div v-else class="table-responsive people-table-wrap">
+        <table class="table data-table people-data-table align-middle mb-0">
           <thead>
             <tr>
-              <th>Sicil No</th>
-              <th>Ad Soyad</th>
-              <th>Departman</th>
-              <th>Pozisyon</th>
-              <th>Zimmet No</th>
-              <th>Durum</th>
-              <th class="text-end">İşlemler</th>
+              <th class="selection-column"><input type="checkbox" :checked="allFilteredSelected" aria-label="Görünen personellerin tümünü seç" @change="toggleAllFiltered"></th>
+              <th class="col-sicil">Sicil No</th>
+              <th class="col-name">Ad Soyad</th>
+              <th class="col-dept">Departman</th>
+              <th class="col-position">Pozisyon</th>
+              <th class="col-sicil">Zimmet No</th>
+              <th class="col-status">Durum</th>
+              <th class="col-actions text-end">İşlemler</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in filteredPersonnel" :key="item.id">
+              <td class="selection-column"><input v-model="selectedPersonnelIds" type="checkbox" :value="item.id" :aria-label="`${item.ad} ${item.soyad} seç`"></td>
               <td>
                 <span class="registration-number">{{ item.sicilNo }}</span>
               </td>
@@ -351,14 +332,14 @@ onBeforeUnmount(() => {
                   >
                     {{ item.ad.charAt(0) }}{{ item.soyad.charAt(0) }}
                   </span>
-                  <div>
-                    <div class="fw-semibold">{{ item.ad }} {{ item.soyad }}</div>
-                    <small class="text-secondary">{{ item.pozisyon }}</small>
+                  <div class="min-w-0">
+                    <div class="cell-primary cell-truncate" :title="`${item.ad} ${item.soyad}`">{{ item.ad }} {{ item.soyad }}</div>
+                    <span class="cell-secondary cell-truncate" :title="item.pozisyon">{{ item.pozisyon }}</span>
                   </div>
                 </div>
               </td>
-              <td>{{ item.departman }}</td>
-              <td>{{ item.pozisyon }}</td>
+              <td class="cell-truncate col-dept" :title="item.departman">{{ item.departman }}</td>
+              <td class="cell-truncate col-position" :title="item.pozisyon">{{ item.pozisyon }}</td>
               <td>
                 <span v-if="item.zimmetNo" class="debit-number">
                   {{ item.zimmetNo }}
@@ -374,7 +355,7 @@ onBeforeUnmount(() => {
                   {{ item.aktifMi ? 'Aktif' : 'Pasif' }}
                 </span>
               </td>
-              <td class="text-end">
+              <td class="col-actions text-end">
                 <div class="action-buttons d-inline-flex gap-1">
                   <button
                     type="button"
@@ -385,7 +366,9 @@ onBeforeUnmount(() => {
                   >
                     <i class="bi bi-eye" aria-hidden="true"></i>
                   </button>
+                  <RouterLink :to="{ name: 'personnel-documents', params: { id: item.id } }" class="btn btn-sm action-button" title="Zimmet belgesi ve imzalı belgeler" :aria-label="`${item.ad} ${item.soyad} belgelerini aç`"><i class="bi bi-file-earmark-text" aria-hidden="true"></i></RouterLink>
                   <button
+                    v-if="authStore.canEdit.value"
                     type="button"
                     class="btn btn-sm action-button"
                     title="Düzenle"
@@ -395,6 +378,7 @@ onBeforeUnmount(() => {
                     <i class="bi bi-pencil" aria-hidden="true"></i>
                   </button>
                   <button
+                    v-if="authStore.isAdmin.value"
                     type="button"
                     class="btn btn-sm action-button danger"
                     title="Sil"
@@ -439,239 +423,9 @@ onBeforeUnmount(() => {
       "
       :confirming="deleting"
       :error-message="deleteError"
+      confirm-label="Personeli Sil"
       @cancel="closeDeleteModal"
       @confirm="confirmDelete"
     />
   </section>
 </template>
-
-<style scoped>
-.add-button {
-  min-height: 44px;
-  padding-inline: 1.15rem;
-  box-shadow: 0 0.4rem 1rem rgb(35 100 210 / 16%);
-}
-
-.summary-card {
-  min-height: 92px;
-  padding: 1.1rem 1.25rem;
-  border: 1px solid var(--border-color);
-  border-radius: 0.875rem;
-  background: #fff;
-  box-shadow: 0 0.25rem 1.25rem rgb(17 38 63 / 4%);
-}
-
-.summary-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 0.85rem;
-  color: #2364d2;
-  background: #e9f0fc;
-}
-
-.summary-icon.active {
-  color: #16844b;
-  background: #e5f6ed;
-}
-
-.summary-icon i {
-  font-size: 1.2rem;
-}
-
-.summary-label {
-  color: #78879a;
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.summary-value {
-  color: #202c3b;
-  font-size: 1.45rem;
-  font-weight: 700;
-}
-
-.personnel-card {
-  overflow: hidden;
-}
-
-.table-toolbar {
-  min-height: 82px;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--border-color);
-  background: #fff;
-}
-
-.search-box {
-  position: relative;
-  width: min(100%, 360px);
-}
-
-.search-box i {
-  position: absolute;
-  z-index: 2;
-  top: 50%;
-  left: 0.9rem;
-  color: #78879a;
-  transform: translateY(-50%);
-}
-
-.search-box .form-control {
-  min-height: 42px;
-  padding-left: 2.55rem;
-  border-color: #dce4ee;
-  border-radius: 0.7rem;
-}
-
-.state-panel {
-  min-height: 350px;
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  color: #78879a;
-}
-
-.state-panel strong {
-  margin-bottom: 0.35rem;
-  color: #263548;
-  font-size: 1rem;
-}
-
-.state-icon {
-  width: 56px;
-  height: 56px;
-  margin-bottom: 1rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 1rem;
-  color: #2364d2;
-  background: #e9f0fc;
-}
-
-.state-icon.error {
-  color: #c73737;
-  background: #fceaea;
-}
-
-.state-icon i {
-  font-size: 1.35rem;
-}
-
-.personnel-table {
-  min-width: 1040px;
-}
-
-.personnel-table th {
-  padding: 0.85rem 1rem;
-  border-bottom-width: 1px;
-  color: #66768b;
-  background: #f8fafc;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.035em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.personnel-table td {
-  padding: 1rem;
-  border-color: #edf1f5;
-  color: #34445a;
-  font-size: 0.875rem;
-}
-
-.personnel-table tbody tr {
-  transition: background-color 0.15s ease;
-}
-
-.personnel-table tbody tr:hover {
-  background: #fbfcfe;
-}
-
-.person-avatar {
-  width: 38px;
-  height: 38px;
-  flex: 0 0 38px;
-  border-radius: 0.75rem;
-  color: #2364d2;
-  background: #e9f0fc;
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.registration-number,
-.debit-number {
-  display: inline-flex;
-  padding: 0.32rem 0.55rem;
-  border-radius: 0.45rem;
-  color: #34445a;
-  background: #f2f5f9;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-
-.debit-number {
-  color: #73510c;
-  background: #fff4d8;
-}
-
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.35rem 0.62rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.status-badge.active {
-  color: #147442;
-  background: #e5f6ed;
-}
-
-.status-badge.passive {
-  color: #66768b;
-  background: #edf1f5;
-}
-
-.status-dot {
-  width: 0.42rem;
-  height: 0.42rem;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.action-button {
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border: 1px solid transparent;
-  color: #66768b;
-  background: transparent;
-}
-
-.action-button:hover {
-  border-color: #cfdcf0;
-  color: #2364d2;
-  background: #f1f5fc;
-}
-
-.action-button.danger:hover {
-  border-color: #f0caca;
-  color: #c73737;
-  background: #fceaea;
-}
-
-@media (max-width: 767.98px) {
-  .search-box {
-    width: 100%;
-  }
-}
-</style>

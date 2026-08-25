@@ -29,6 +29,19 @@ internal static class PersonnelMappings
             personnel.ZimmetNo,
             personnel.AktifMi,
             personnel.CreatedAt,
-            personnel.UpdatedAt);
+            personnel.UpdatedAt,
+            personnel.Devices.Select(d => new DeviceListDto(
+                d.Id,
+                d.CihazAdi,
+                d.SeriNo,
+                d.EnvanterNo,
+                d.Marka,
+                d.Model,
+                d.Category?.Name ?? "Bilinmiyor",
+                d.Status,
+                d.Status.ToString(),
+                $"{personnel.Ad} {personnel.Soyad}",
+                d.CreatedAt
+            )).ToList());
     }
 }

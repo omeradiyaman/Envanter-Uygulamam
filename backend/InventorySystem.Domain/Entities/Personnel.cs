@@ -34,6 +34,9 @@ public sealed class Personnel : BaseEntity
 
     public bool AktifMi { get; private set; }
 
+    private readonly List<Device> _devices = new();
+    public IReadOnlyCollection<Device> Devices => _devices.AsReadOnly();
+
     public void Update(
         string sicilNo,
         string ad,
@@ -54,6 +57,12 @@ public sealed class Personnel : BaseEntity
         DeletedAt = deletedAt;
         UpdatedAt = deletedAt;
         AktifMi = false;
+    }
+
+    public void RestoreFromDelete(bool aktifMi, DateTimeOffset restoredAt)
+    {
+        Restore(restoredAt);
+        AktifMi = aktifMi;
     }
 
     private void ApplyChanges(

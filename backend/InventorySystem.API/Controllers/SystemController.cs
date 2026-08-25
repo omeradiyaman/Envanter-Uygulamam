@@ -2,6 +2,7 @@ using InventorySystem.Application.DTOs;
 using InventorySystem.Application.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace InventorySystem.API.Controllers;
 
@@ -10,6 +11,7 @@ namespace InventorySystem.API.Controllers;
 public sealed class SystemController(ISender sender) : ControllerBase
 {
     [HttpGet("status")]
+    [AllowAnonymous]
     [ProducesResponseType<SystemStatusDto>(StatusCodes.Status200OK)]
     public async Task<ActionResult<SystemStatusDto>> GetStatus(
         [FromQuery] string client = "frontend",

@@ -10,7 +10,8 @@ public sealed class DesignTimeApplicationDbContextFactory
     {
         var connectionString =
             Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-            ?? "Host=localhost;Port=5433;Database=inventory_system;Username=inventory_app;Password=inventory_dev_password";
+            ?? throw new InvalidOperationException(
+                "Migration işlemleri için ConnectionStrings__DefaultConnection environment değişkeni ayarlanmalıdır.");
 
         var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

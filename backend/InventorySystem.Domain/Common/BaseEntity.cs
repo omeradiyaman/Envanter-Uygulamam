@@ -11,4 +11,11 @@ public abstract class BaseEntity
     public bool IsDeleted { get; protected set; }
 
     public DateTimeOffset? DeletedAt { get; protected set; }
+
+    protected void Restore(DateTimeOffset restoredAt)
+    {
+        IsDeleted = false;
+        DeletedAt = null;
+        UpdatedAt = restoredAt;
+    }
 }

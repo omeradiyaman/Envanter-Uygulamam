@@ -3,10 +3,13 @@ using InventorySystem.Application.DTOs;
 using InventorySystem.Application.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using InventorySystem.Application.Common.Security;
 
 namespace InventorySystem.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/personnel")]
 public sealed class PersonnelController(ISender sender) : ControllerBase
 {
@@ -37,6 +40,7 @@ public sealed class PersonnelController(ISender sender) : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = AuthorizationPolicies.EditorOrAdmin)]
     [ProducesResponseType<PersonnelDetailDto>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -59,6 +63,7 @@ public sealed class PersonnelController(ISender sender) : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.EditorOrAdmin)]
     [ProducesResponseType<PersonnelDetailDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -84,6 +89,7 @@ public sealed class PersonnelController(ISender sender) : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOnly)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(

@@ -1,4 +1,5 @@
-import { del, get, post, put } from './apiClient'
+import { del, get, getBlob, post, postForm, put } from './apiClient'
+import type { DeviceListItem } from './deviceService'
 
 export interface PersonnelListItem {
   id: string
@@ -14,6 +15,7 @@ export interface PersonnelListItem {
 export interface PersonnelDetail extends PersonnelListItem {
   createdAt: string
   updatedAt: string | null
+  devices: DeviceListItem[]
 }
 
 export interface PersonnelPayload {
@@ -24,6 +26,18 @@ export interface PersonnelPayload {
   pozisyon: string
   zimmetNo: string | null
   aktifMi: boolean
+}
+
+export interface AssignmentDocument {
+  id: string
+  personnelId: string
+  assignmentHistoryId: string | null
+  originalFileName: string
+  contentType: string
+  fileSize: number
+  uploadedAt: string
+  description: string | null
+  replacesDocumentId: string | null
 }
 
 export function getPersonnelList(
@@ -54,4 +68,33 @@ export function updatePersonnel(
 
 export function deletePersonnel(id: string): Promise<void> {
   return del(`/api/personnel/${id}`)
+}
+
+export function getGeneratedAssignmentDocument(personnelId: string): Promise<Blob> {
+  return getBlob(`/api/personnel/${personnelId}/assignment-documents/generated`)
+}
+
+export function getAssignmentDocuments(personnelId: string): Promise<AssignmentDocument[]> {
+  return get<AssignmentDocument[]>(`/api/personnel/${personnelId}/assignment-documents`)
+}
+
+export function getAssignmentDocumentContent(personnelId: string, documentId: string): Promise<Blob> {
+  return getBlob(`/api/personnel/${personnelId}/assignment-documents/${documentId}/content`)
+}
+
+export function uploadAssignmentDocument(
+  personnelId: string,
+  file: File,
+  description: string,
+  replacesDocumentId?: string,
+): Promise<AssignmentDocument> {
+  const form = new FormData()
+  form.append('file', file)
+  if (description.trim()) form.append('description', description.trim())
+  if (replacesDocumentId) form.append('replacesDocumentId', replacesDocumentId)
+  return postForm<AssignmentDocument>(`/api/personnel/${personnelId}/assignment-documents`, form)
+}
+
+export function deleteAssignmentDocument(personnelId: string, documentId: string): Promise<void> {
+  return del(`/api/personnel/${personnelId}/assignment-documents/${documentId}`)
 }

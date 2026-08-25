@@ -1,23 +1,48 @@
 <script setup lang="ts">
-defineProps<{
-  show: boolean
-  title: string
-  message: string
-  detail: string
-  confirming: boolean
-  errorMessage: string
-}>()
+import { computed, ref, toRef } from 'vue'
+import { useModalAccessibility } from '../composables/useModalAccessibility'
+
+const props = withDefaults(
+  defineProps<{
+    show: boolean
+    title: string
+    message: string
+    detail: string
+    confirming: boolean
+    errorMessage: string
+    confirmLabel?: string
+    confirmingLabel?: string
+  }>(),
+  {
+    confirmLabel: 'Onayla',
+    confirmingLabel: 'İşleniyor...',
+  },
+)
 
 const emit = defineEmits<{
   cancel: []
   confirm: []
 }>()
+
+const modalRoot = ref<HTMLElement | null>(null)
+useModalAccessibility(toRef(props, 'show'), modalRoot, () => {
+  if (!props.confirming) emit('cancel')
+})
+const tone = computed(() => {
+  const value = `${props.title} ${props.confirmLabel}`.toLocaleLowerCase('tr-TR')
+  if (/(sil|hurda|imha|kaldır)/.test(value)) return 'danger'
+  if (/(iade|geri al|pasif)/.test(value)) return 'warning'
+  if (/(zimmet|oluştur|ata)/.test(value)) return 'success'
+  return 'primary'
+})
+const toneIcon = computed(() => tone.value === 'danger' ? 'bi-trash3-fill' : tone.value === 'warning' ? 'bi-exclamation-triangle-fill' : tone.value === 'success' ? 'bi-check2-circle' : 'bi-question-circle-fill')
 </script>
 
 <template>
   <Teleport to="body">
     <div
       v-if="show"
+      ref="modalRoot"
       class="modal fade show d-block"
       tabindex="-1"
       role="alertdialog"
@@ -25,22 +50,25 @@ const emit = defineEmits<{
       aria-labelledby="confirmationTitle"
     >
       <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-          <div class="modal-body p-4 text-center">
-            <span class="danger-icon d-inline-flex align-items-center justify-content-center mb-3">
-              <i class="bi bi-trash3" aria-hidden="true"></i>
+        <div class="modal-content app-modal-content">
+          <div class="confirm-modal__body" :class="`is-${tone}`">
+            <span class="confirm-icon d-inline-flex align-items-center justify-content-center mb-3">
+              <i :class="['bi', toneIcon]" aria-hidden="true"></i>
             </span>
-            <h2 id="confirmationTitle" class="h5 fw-semibold">{{ title }}</h2>
-            <p class="text-secondary mb-2">{{ message }}</p>
-            <div class="confirmation-detail">{{ detail }}</div>
-            <div v-if="errorMessage" class="alert alert-danger mt-3 mb-0" role="alert">
+            <h2 id="confirmationTitle" class="h5 fw-semibold mb-2">{{ title }}</h2>
+            <p class="confirm-modal__message">{{ message }}</p>
+            <div v-if="detail" class="confirm-modal__detail">{{ detail }}</div>
+            <div class="confirm-modal__warning">
+              Bu kritik işlemi onaylamadan önce seçiminizi kontrol edin.
+            </div>
+            <div v-if="errorMessage" class="alert alert-danger mt-3 mb-0 text-start" role="alert">
               {{ errorMessage }}
             </div>
           </div>
-          <div class="modal-footer justify-content-center px-4 py-3">
+          <div class="modal-footer justify-content-end px-4 py-3 gap-2">
             <button
               type="button"
-              class="btn btn-light border px-4"
+              class="btn btn-light border"
               :disabled="confirming"
               @click="emit('cancel')"
             >
@@ -48,7 +76,7 @@ const emit = defineEmits<{
             </button>
             <button
               type="button"
-              class="btn btn-danger px-4"
+              :class="['btn', `btn-${tone}`]"
               :disabled="confirming"
               @click="emit('confirm')"
             >
@@ -57,7 +85,7 @@ const emit = defineEmits<{
                 class="spinner-border spinner-border-sm me-2"
                 aria-hidden="true"
               ></span>
-              {{ confirming ? 'Siliniyor...' : 'Personeli Sil' }}
+              {{ confirming ? confirmingLabel : confirmLabel }}
             </button>
           </div>
         </div>
@@ -72,25 +100,18 @@ const emit = defineEmits<{
   border-color: var(--border-color);
 }
 
-.danger-icon {
+.confirm-icon {
+  --confirm-color: var(--primary);
   width: 58px;
   height: 58px;
-  border-radius: 1rem;
-  color: #c73737;
-  background: #fceaea;
+  border-radius: var(--radius-xl);
+  color: var(--confirm-color);
+  background: color-mix(in srgb, var(--confirm-color) 11%, var(--surface));
 }
-
-.danger-icon i {
+.confirm-modal__body.is-danger .confirm-icon{--confirm-color:var(--danger)}
+.confirm-modal__body.is-warning .confirm-icon{--confirm-color:var(--warning)}
+.confirm-modal__body.is-success .confirm-icon{--confirm-color:var(--success)}
+.confirm-icon i {
   font-size: 1.35rem;
-}
-
-.confirmation-detail {
-  display: inline-block;
-  padding: 0.5rem 0.85rem;
-  border-radius: 0.6rem;
-  color: #34445a;
-  background: #f2f5f9;
-  font-size: 0.875rem;
-  font-weight: 600;
 }
 </style>

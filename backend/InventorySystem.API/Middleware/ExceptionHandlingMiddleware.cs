@@ -34,6 +34,22 @@ public sealed class ExceptionHandlingMiddleware(
                 "İşlem tamamlanamadı.",
                 exception.Message);
         }
+        catch (BusinessRuleException exception)
+        {
+            await WriteProblemAsync(
+                context,
+                StatusCodes.Status422UnprocessableEntity,
+                "İş kuralı ihlali.",
+                exception.Message);
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            await WriteProblemAsync(
+                context,
+                StatusCodes.Status401Unauthorized,
+                "Kimlik doğrulama başarısız.",
+                string.IsNullOrWhiteSpace(exception.Message) ? null : exception.Message);
+        }
         catch (Exception exception)
         {
             logger.LogError(exception, "An unhandled exception occurred.");

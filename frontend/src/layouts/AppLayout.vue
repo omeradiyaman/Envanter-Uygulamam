@@ -3,9 +3,11 @@ import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import AppSidebar from '../components/AppSidebar.vue'
 import AppTopbar from '../components/AppTopbar.vue'
+import { useSidebar } from '../composables/useSidebar'
 
 const route = useRoute()
 const sidebarOpen = ref(false)
+const { collapsed } = useSidebar()
 const pageTitle = computed(() => String(route.meta.title ?? 'Dashboard'))
 
 function closeSidebar() {
@@ -14,8 +16,14 @@ function closeSidebar() {
 </script>
 
 <template>
-  <div class="app-shell" :class="{ 'sidebar-open': sidebarOpen }">
-    <AppSidebar @navigate="closeSidebar" />
+  <div
+    class="app-shell"
+    :class="{
+      'sidebar-open': sidebarOpen,
+      'sidebar-collapsed': collapsed,
+    }"
+  >
+    <AppSidebar :collapsed="collapsed" @navigate="closeSidebar" />
 
     <button
       v-if="sidebarOpen"
@@ -43,6 +51,6 @@ function closeSidebar() {
   height: 100%;
   padding: 0;
   border: 0;
-  background: rgb(17 38 63 / 55%);
+  background: var(--backdrop);
 }
 </style>

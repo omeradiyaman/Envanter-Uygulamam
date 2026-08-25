@@ -20,7 +20,8 @@ public sealed record PersonnelDetailDto(
     string? ZimmetNo,
     bool AktifMi,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? UpdatedAt);
+    DateTimeOffset? UpdatedAt,
+    IReadOnlyList<DeviceListDto> Devices);
 
 public sealed record CreatePersonnelRequest(
     string SicilNo,

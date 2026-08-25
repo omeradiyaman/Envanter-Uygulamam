@@ -20,7 +20,8 @@ public static class CorsConfiguration
                 policy
                     .WithOrigins(allowedOrigins)
                     .AllowAnyHeader()
-                    .AllowAnyMethod();
+                    .AllowAnyMethod()
+                    .AllowCredentials();
             });
         });
 

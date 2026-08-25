@@ -1,18 +1,16 @@
-:root {
-  color: #202c3b;
-  background: #f4f7fb;
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  --sidebar-width: 272px;
-  --sidebar-bg: #12263f;
-  --sidebar-active: #2364d2;
-  --page-bg: #f4f7fb;
-  --border-color: #e3e9f1;
-}
+@import './styles/tokens.css';
+@import './styles/dark-theme.css';
+@import './styles/typography.css';
+@import './styles/components.css';
+@import './styles/ui-patterns.css';
+@import './styles/modal-patterns.css';
+@import './styles/view-patterns.css';
+@import './styles/reference-pages.css';
+@import './styles/workflow-pages.css';
+@import './styles/modern-dashboard.css';
+@import './styles/modern-personnel.css';
+@import './styles/reference-workspaces.css';
+@import './styles/polish.css';
 
 * {
   box-sizing: border-box;
@@ -22,7 +20,11 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  background: var(--page-bg);
+  background:
+    radial-gradient(ellipse 80% 48% at 8% -12%, rgb(99 102 241 / 7%), transparent 55%),
+    radial-gradient(ellipse 55% 38% at 94% 0%, rgb(34 211 238 / 5%), transparent 50%),
+    var(--bg-primary);
+  background-attachment: fixed;
 }
 
 button,
@@ -32,25 +34,46 @@ a {
 
 .app-shell {
   min-height: 100vh;
+  background: transparent;
 }
 
 .app-main {
   min-height: 100vh;
   margin-left: var(--sidebar-width);
+  background: transparent;
+  transition: margin-left 0.2s ease;
+}
+
+.sidebar-collapsed .app-main {
+  margin-left: var(--sidebar-width-collapsed);
 }
 
 .page-content {
-  padding: 1.75rem;
+  width: 100%;
+  padding: 1.75rem 2rem 2.25rem;
+  max-width: 1600px;
+  margin-inline: auto;
 }
 
 .content-card {
   border: 1px solid var(--border-color);
-  border-radius: 0.875rem;
-  box-shadow: 0 0.25rem 1.25rem rgb(17 38 63 / 5%);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  background: var(--surface);
+}
+
+[data-theme='dark'] body {
+  background:
+    radial-gradient(ellipse 80% 48% at 8% -12%, rgb(99 102 241 / 15%), transparent 55%),
+    radial-gradient(ellipse 55% 38% at 94% 0%, rgb(34 211 238 / 8%), transparent 50%),
+    radial-gradient(ellipse 50% 30% at 50% 100%, rgb(124 58 237 / 6%), transparent 48%),
+    var(--bg-primary);
+  background-attachment: fixed;
 }
 
 @media (max-width: 991.98px) {
-  .app-main {
+  .app-main,
+  .sidebar-collapsed .app-main {
     margin-left: 0;
   }
 

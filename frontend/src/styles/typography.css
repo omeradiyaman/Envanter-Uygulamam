@@ -1,0 +1,119 @@
+/**
+ * Typography system
+ */
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+  color: var(--text-primary);
+}
+
+.text-page-title {
+  font-size: var(--font-size-page-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  color: var(--text-heading);
+}
+
+.text-section-title {
+  font-size: var(--font-size-section-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  color: var(--text-heading);
+}
+
+.text-card-title {
+  font-size: var(--font-size-card-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  color: var(--text-heading);
+}
+
+.text-body {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+  color: var(--text-body);
+}
+
+.text-secondary-custom {
+  font-size: var(--font-size-secondary);
+  color: var(--text-secondary);
+}
+
+.text-muted-custom {
+  font-size: var(--font-size-secondary);
+  color: var(--text-muted);
+}
+
+.text-label {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  line-height: var(--line-height-normal);
+}
+
+.text-table {
+  font-size: var(--font-size-table);
+  color: var(--text-body);
+}
+
+.text-table-header {
+  font-size: var(--font-size-table-header);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+  color: var(--table-header-text);
+}
+
+.text-caption {
+  font-size: var(--font-size-caption);
+  color: var(--text-muted);
+}
+
+/* Improve readability of Bootstrap small text */
+small,
+.small {
+  font-size: var(--font-size-secondary) !important;
+}
+
+.text-secondary {
+  color: var(--text-secondary) !important;
+}
+
+.text-muted {
+  color: var(--text-muted) !important;
+}
+
+.text-success {
+  color: var(--success-on) !important;
+}
+
+.text-danger {
+  color: var(--danger-on) !important;
+}
+
+.text-warning {
+  color: var(--warning-on) !important;
+}
+
+.text-primary {
+  color: var(--primary) !important;
+}
+
+h1,
+.h1,
+h2,
+.h2,
+h3,
+.h3,
+h4,
+.h4,
+h5,
+.h5,
+h6,
+.h6 {
+  color: var(--text-heading);
+}

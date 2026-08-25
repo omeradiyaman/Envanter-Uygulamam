@@ -1,3 +1,5 @@
+// An explicitly empty VITE_API_BASE_URL produces relative /api calls,
+// which the Nginx container proxies to the backend (Docker setup).
 const apiBaseUrl = (
   import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7001'
 ).replace(/\/$/, '')
@@ -25,6 +27,7 @@ async function request<T>(
 ): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...options,
+    credentials: 'include',
     headers: {
       Accept: 'application/json',
       ...(options.body ? { 'Content-Type': 'application/json' } : {}),
@@ -34,18 +37,8 @@ async function request<T>(
   })
 
   if (!response.ok) {
-    const problem = (await response.json().catch(() => null)) as ProblemDetails | null
-    const validationMessage = problem?.errors
-      ? Object.values(problem.errors).flat().join(' ')
-      : null
-
-    throw new ApiError(
-      validationMessage
-        ?? problem?.detail
-        ?? problem?.title
-        ?? `API isteği başarısız oldu (${response.status}).`,
-      response.status,
-    )
+    if (response.status === 401 && path !== '/api/auth/login') window.dispatchEvent(new Event('auth:unauthorized'))
+    await throwApiError(response)
   }
 
   if (response.status === 204) {
@@ -53,6 +46,17 @@ async function request<T>(
   }
 
   return (await response.json()) as T
+}
+
+async function throwApiError(response: Response): Promise<never> {
+  const problem = (await response.json().catch(() => null)) as ProblemDetails | null
+  const validationMessage = problem?.errors
+    ? Object.values(problem.errors).flat().join(' ')
+    : null
+  throw new ApiError(
+    validationMessage ?? problem?.detail ?? problem?.title ?? `API isteği başarısız oldu (${response.status}).`,
+    response.status,
+  )
 }
 
 export function get<T>(path: string, signal?: AbortSignal): Promise<T> {
@@ -85,4 +89,22 @@ export function put<TBody, TResponse>(
 
 export function del(path: string, signal?: AbortSignal): Promise<void> {
   return request<void>(path, { method: 'DELETE' }, signal)
+}
+
+export async function getBlob(path: string, signal?: AbortSignal): Promise<Blob> {
+  const response = await fetch(`${apiBaseUrl}${path}`, { credentials: 'include', headers: { Accept: '*/*' }, signal })
+  if (!response.ok) await throwApiError(response)
+  return response.blob()
+}
+
+export async function postForm<T>(path: string, form: FormData, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+    body: form,
+    signal,
+  })
+  if (!response.ok) await throwApiError(response)
+  return response.json() as Promise<T>
 }
