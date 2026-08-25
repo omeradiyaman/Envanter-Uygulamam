@@ -1,0 +1,60 @@
+:root {
+  color: #202c3b;
+  background: #f4f7fb;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --sidebar-width: 272px;
+  --sidebar-bg: #12263f;
+  --sidebar-active: #2364d2;
+  --page-bg: #f4f7fb;
+  --border-color: #e3e9f1;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: var(--page-bg);
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.app-main {
+  min-height: 100vh;
+  margin-left: var(--sidebar-width);
+}
+
+.page-content {
+  padding: 1.75rem;
+}
+
+.content-card {
+  border: 1px solid var(--border-color);
+  border-radius: 0.875rem;
+  box-shadow: 0 0.25rem 1.25rem rgb(17 38 63 / 5%);
+}
+
+@media (max-width: 991.98px) {
+  .app-main {
+    margin-left: 0;
+  }
+
+  .page-content {
+    padding: 1rem;
+  }
+}
